@@ -1,5 +1,5 @@
--- FiveM Heli Cam by mraes
--- Version 1.3 2017-06-12
+-- FiveM Heli Cam by davwheat and mraes
+-- Version 2.0 05-11-2018 (DD-MM-YYYY)
 
 RegisterServerEvent("heli:spotlight")
 AddEventHandler(
