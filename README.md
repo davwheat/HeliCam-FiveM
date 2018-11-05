@@ -8,7 +8,7 @@ Version 2.0 - 05/11/2018
 * Download resource
 * Add `start heli` entry to your FX Server config
 
-## Controls 
+## Controls
 
 * Press the the E key to switch to the HeliCam
 * Move mouse to rotate camera view.
@@ -18,9 +18,9 @@ Version 2.0 - 05/11/2018
 * When camera view pointed at vehicle and within range, press SPACE to toggle camera lock onto the vehicle.
 * Press the `X` key to rappel from the helicopter
 
-## Changelog:
+## Changelog
 
-(DD/MM/YYYY)
+Date format: DD/MM/YYYY
 
 * 08/06/2017: Added smoothing to camera movement.
 * 08/06/2017: Added night vision and thermal vision.
