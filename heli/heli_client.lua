@@ -1,5 +1,5 @@
--- FiveM Heli Cam by mraes
--- Version 1.3 2017-06-12
+-- FiveM Heli Cam by davwheat and mraes
+-- Version 2.0 05-11-2018 (DD-MM-YYYY)
 
 -- config
 local fov_max = 80.0
@@ -18,6 +18,7 @@ local helicam = false
 local polmav_hash = GetHashKey("polmav")
 local fov = (fov_max+fov_min)*0.5
 local vision_state = 0 -- 0 is normal, 1 is nightmode, 2 is thermal vision
+
 Citizen.CreateThread(function()
 	while true do
         Citizen.Wait(0)
