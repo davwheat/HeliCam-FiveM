@@ -2,22 +2,25 @@
 -- Version 2.0 05-11-2018 (DD-MM-YYYY)
 
 -- config
-local fov_max = 80.0
-local fov_min = 10.0 -- max zoom level (smaller fov is more zoom)
-local zoomspeed = 2.0 -- camera zoom speed
-local speed_lr = 3.0 -- speed by which the camera pans left-right
-local speed_ud = 3.0 -- speed by which the camera pans up-down
+local fov_max = 90.0
+local fov_min = 7.5 -- max zoom level (smaller fov is more zoom)
+local zoomspeed = 3.0 -- camera zoom speed
+local speed_lr = 8.0 -- speed by which the camera pans left-right
+local speed_ud = 8.0 -- speed by which the camera pans up-down
 local toggle_helicam = 51 -- control id of the button by which to toggle the helicam mode. Default: INPUT_CONTEXT (E)
 local toggle_vision = 25 -- control id to toggle vision mode. Default: INPUT_AIM (Right mouse btn)
 local toggle_rappel = 154 -- control id to rappel out of the heli. Default: INPUT_DUCK (X)
 local toggle_spotlight = 183 -- control id to toggle the front spotlight Default: INPUT_PhoneCameraGrid (G)
 local toggle_lock_on = 22 -- control id to lock onto a vehicle with the camera. Default is INPUT_SPRINT (spacebar)
+local showLSPDlogo = 0 -- 1 for ON, 0 for OFF
+local minHeightAboveGround = 1.5 -- default: 1.5. Minimum height above ground to activate Heli Cam (in metres). Should be between 1 and 20.
+local useMilesPerHour = 0 -- 0 is kmh; 1 is mph
 
 -- Script starts here
 local helicam = false
-local polmav_hash = GetHashKey("polmav")
+local polmav_hash = GetHashKey("polmav") -- change to another heli if you want :P
 local fov = (fov_max + fov_min) * 0.5
-local vision_state = 0 -- 0 is normal, 1 is nightmode, 2 is thermal vision
+local vision_state = 0 -- 0 is normal, 1 is night vision, 2 is thermal vision
 
 Citizen.CreateThread(
 	function()
@@ -34,10 +37,10 @@ Citizen.CreateThread(
 					end
 
 					if IsControlJustPressed(0, toggle_rappel) then -- Initiate rappel
-						Citizen.Trace("try to rappel")
+						Citizen.Trace("Attempting rapel from helicopter...")
 						if GetPedInVehicleSeat(heli, 1) == lPed or GetPedInVehicleSeat(heli, 2) == lPed then
 							PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", false)
-							TaskRappelFromHeli(GetPlayerPed(-1), 1)
+							TaskRappelFromHeli(lPed, 1)
 						else
 							SetNotificationTextEntry("STRING")
 							AddTextComponentString("~r~Can't rappel from this seat")
@@ -69,7 +72,7 @@ Citizen.CreateThread(
 				SetCamFov(cam, fov)
 				RenderScriptCams(true, false, 0, 1, 0)
 				PushScaleformMovieFunction(scaleform, "SET_CAM_LOGO")
-				PushScaleformMovieFunctionParameterInt(1) -- 0 for nothing, 1 for LSPD logo
+				PushScaleformMovieFunctionParameterInt(showLSPDlogo) -- 0 for nothing, 1 for LSPD logo
 				PopScaleformMovieFunctionVoid()
 				local locked_on_vehicle = nil
 				while helicam and not IsEntityDead(lPed) and (GetVehiclePedIsIn(lPed) == heli) and IsHeliHighEnough(heli) do
@@ -149,13 +152,12 @@ AddEventHandler(
 )
 
 function IsPlayerInPolmav()
-	local lPed = GetPlayerPed(-1)
-	local vehicle = GetVehiclePedIsIn(lPed)
+	local vehicle = GetVehiclePedIsIn(GetPlayerPed(-1))
 	return IsVehicleModel(vehicle, polmav_hash)
 end
 
 function IsHeliHighEnough(heli)
-	return GetEntityHeightAboveGround(heli) > 1.5
+	return GetEntityHeightAboveGround(heli) > minHeightAboveGround
 end
 
 function ChangeVision()
@@ -230,6 +232,24 @@ function RenderVehicleInfo(vehicle)
 	local model = GetEntityModel(vehicle)
 	local vehname = GetLabelText(GetDisplayNameFromVehicleModel(model))
 	local licenseplate = GetVehicleNumberPlateText(vehicle)
+	local numberOfPassengers = GetVehicleNumberOfPassengers(vehicle)
+	local isDriverSeatOccupied = IsVehicleSeatFree(vehicle, -1)
+	local vehicleSpeed = GetEntitySpeed(vehicle)
+
+	local spdUnits = ""
+
+	if useMilesPerHour then
+		vehicleSpeed = vehicleSpeed * 2.236936 -- mph
+		spdUnits = "mph"
+	else
+		vehicleSpeed = vehicleSpeed * 3.6 -- kmh
+		spdUnits = "km/h"
+	end
+
+	if isDriverSeatOccupied then
+		numberOfPassengers = numberOfPassengers + 1
+	end
+
 	SetTextFont(0)
 	SetTextProportional(1)
 	SetTextScale(0.0, 0.55)
@@ -239,7 +259,9 @@ function RenderVehicleInfo(vehicle)
 	SetTextDropShadow()
 	SetTextOutline()
 	SetTextEntry("STRING")
-	AddTextComponentString("Model: " .. vehname .. "\nPlate: " .. licenseplate)
+	AddTextComponentString(
+		"Vehicle: " .. vehname .. "        Plate: " .. licenseplate .. "\nSpeed: " .. math.ceil(vehicleSpeed) .. "        Total occupants: " .. numberOfPassengers
+	)
 	DrawText(0.45, 0.9)
 end
 
