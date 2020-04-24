@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Helicam</title>
+    <link rel="stylesheet" href="nui://heli/ui.css" />
+    <link rel="stylesheet" href="./ui.css" />
+  </head>
+  <body class="hide">
+    <div class="crosshair">
+      <div class="crosshair-line"></div>
+      <div class="crosshair-line"></div>
+      <div class="crosshair-line"></div>
+      <div class="crosshair-line"></div>
+    </div>
+
+    <div class="bg">
+      <header>
+        <div class="left">
+          <span id="date"></span>
+          <span id="time"></span>
+          <span id="timezone"></span>
+          <span id="auto">AUTO</span>
+        </div>
+        <div class="right">
+          <span id="camtype" class="invert"></span>
+          <span id="zoom"></span>
+          <span id="auto2"></span>
+          <span id="num1">80</span>
+          <span id="default">DFLT</span>
+          <span id="num2"></span>
+        </div>
+      </header>
+      <aside></aside>
+      <main>
+        <div class="noise"></div>
+      </main>
+      <footer>
+        <div class="left">
+          <span id="acft">ACFT</span>
+          <span id="acftPosition">a</span>
+          <span id="acftDirection">b</span>
+          <span id="acftHeight">c</span>
+        </div>
+        <div class="mid"></div>
+        <div class="right">
+          <span id="tgt">TGT</span>
+          <span id="tgtPlate">a</span>
+          <span id="tgtPosition">b</span>
+          <span id="tgtDirection">c</span>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      let currentDate = new Date(0);
+
+      function getDateText() {
+        return `${currentDate
+          .getDate()
+          .toString()
+          .padStart(2, "0")}${monthToTwoLetterAbbr(
+          currentDate.getMonth() + 1
+        )}${currentDate.getFullYear()}`;
+      }
+
+      function monthToTwoLetterAbbr(month) {
+        switch (month) {
+          case 1:
+            return "JA";
+          case 2:
+            return "FE";
+          case 3:
+            return "MR";
+          case 4:
+            return "AP";
+          case 5:
+            return "MY";
+          case 6:
+            return "JN";
+          case 7:
+            return "JY";
+          case 8:
+            return "AU";
+          case 9:
+            return "SE";
+          case 10:
+            return "OC";
+          case 11:
+            return "NV";
+          case 12:
+            return "DE";
+          default:
+            return "??";
+        }
+      }
+
+      setInterval(refresh, 1000);
+
+      function refresh() {
+        currentDate = new Date();
+
+        const timezone = currentDate.getTimezoneOffset() / -60;
+
+        document.getElementById("date").innerText = getDateText();
+
+        document.getElementById(
+          "time"
+        ).innerText = `${currentDate
+          .getHours()
+          .toString()
+          .padStart(2, "0")}:${currentDate
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}:${currentDate
+          .getSeconds()
+          .toString()
+          .padStart(2, "0")}`;
+
+        document.getElementById("timezone").innerText = `UTC+${
+          timezone - Math.floor(timezone) === 0 ? timezone + ".0" : timezone
+        }`;
+      }
+
+      refresh();
+
+      function HeadingToCompassDirection(hdg) {
+        let direction = Math.floor((hdg + 22.5) / 45);
+
+        switch (direction) {
+          case 0:
+          case 8:
+          default:
+            return "N";
+          case 1:
+            return "NE";
+          case 2:
+            return "E";
+          case 3:
+            return "SE";
+          case 4:
+            return "S";
+          case 5:
+            return "SW";
+          case 6:
+            return "W";
+          case 7:
+            return "NW";
+        }
+      }
+
+      function ACHeadingToCompassDirection(hdg) {
+        let direction = Math.floor((hdg + 22.5) / 45);
+
+        switch (direction) {
+          case 0:
+          default:
+            return "N";
+          case -1:
+            return "NE";
+          case -2:
+            return "E";
+          case -3:
+            return "SE";
+          case 4:
+          case -4:
+            return "S";
+          case 3:
+            return "SW";
+          case 2:
+            return "W";
+          case 1:
+            return "NW";
+        }
+      }
+
+      window.addEventListener("message", (event) => {
+        if (event.data.type === "update") {
+          // {
+          //   fov: Number,
+          //   numPlate: String,
+          //   vehRoadName: String,
+          //   acftRoadName: String,
+          //   heading: Number,
+          //   vehHeading: Number,
+          //   altitudeAGL: Number,
+          //   locked: Boolean,
+          //   camtype: String, -- 0 is normal, 1 is night vision, 2 is thermal vision
+          // }
+
+          document.getElementById("zoom").innerText = Math.round(
+            200 - event.data.info.fov * 1.5
+          );
+          document.getElementById("camtype").innerText =
+            event.data.info.camtype === 0
+              ? "EOW"
+              : event.data.info.camtype === 1
+              ? "NITE"
+              : "IR";
+
+          document.getElementById("acftPosition").innerText =
+            event.data.info.acftRoadName;
+          document.getElementById(
+            "acftDirection"
+          ).innerText = ACHeadingToCompassDirection(event.data.info.heading);
+          document.getElementById("acftHeight").innerText = `${Math.round(
+            event.data.info.altitudeAGL * 3.5
+          )} FT`;
+
+          document.getElementById("tgtPlate").innerText =
+            event.data.info.numPlate;
+          document.getElementById("tgtPosition").innerText =
+            event.data.info.vehRoadName;
+          document.getElementById("tgtDirection").innerText =
+            event.data.info.vehHeading === -1
+              ? ""
+              : HeadingToCompassDirection(event.data.info.vehHeading);
+        } else if (event.data.type === "show") {
+          document.body.classList.remove("hide");
+        } else if (event.data.type === "hide") {
+          document.body.classList.add("hide");
+        }
+      });
+    </script>
+  </body>
+</html>
