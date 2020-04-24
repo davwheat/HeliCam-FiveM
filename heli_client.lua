@@ -11,12 +11,11 @@ local toggle_vision = 25 -- control id to toggle vision mode. Default: INPUT_AIM
 local toggle_rappel = 154 -- control id to rappel out of the heli. Default: INPUT_DUCK (X)
 local toggle_spotlight = 183 -- control id to toggle the front spotlight Default: INPUT_PhoneCameraGrid (G)
 local toggle_lock_on = 22 -- control id to lock onto a vehicle with the camera. Default is INPUT_SPRINT (spacebar)
-local showLSPDlogo = 0 -- 1 for ON, 0 for OFF
 local minHeightAboveGround = 1.5 -- default: 1.5. Minimum height above ground to activate Heli Cam (in metres). Should be between 1 and 20.
 local useMilesPerHour = 1 -- 0 is kmh; 1 is mph
 
 -- Script starts here
-local helicam = false
+local helicam = false -- is in helicam
 local polmav_hash = GetHashKey("polmav") -- change to another heli if you want :P
 local fov = (fov_max + fov_min) * 0.5
 local vision_state = 0 -- 0 is normal, 1 is night vision, 2 is thermal vision
@@ -30,7 +29,7 @@ Citizen.CreateThread(function()
             local heli = GetVehiclePedIsIn(lPed)
 
             if IsHeliHighEnough(heli) then
-                if IsControlJustPressed(0, toggle_helicam) then -- Toggle Helicam
+                if IsControlJustPressed(0, toggle_helicam) and not helicam then -- Toggle Helicam
                     PlaySoundFrontend(-1, "SELECT",
                                       "HUD_FRONTEND_DEFAULT_SOUNDSET", false)
                     helicam = true
@@ -39,7 +38,7 @@ Citizen.CreateThread(function()
                 end
 
                 if IsControlJustPressed(0, toggle_rappel) then -- Initiate rappel
-                    Citizen.Trace("Attempting rapel from helicopter...")
+                    Citizen.Trace("Attempting rapel from helicopter...\n")
                     if GetPedInVehicleSeat(heli, 1) == lPed or
                         GetPedInVehicleSeat(heli, 2) == lPed then
                         PlaySoundFrontend(-1, "SELECT",
@@ -66,6 +65,7 @@ Citizen.CreateThread(function()
         end
 
         if helicam then
+
             -- SetTimecycleModifier("heliGunCam")
             -- SetTimecycleModifierStrength(0.3)
             local scaleform = RequestScaleformMovie("DRONE_CAM")
@@ -99,6 +99,9 @@ Citizen.CreateThread(function()
                                       "HUD_FRONTEND_DEFAULT_SOUNDSET", false)
                     ChangeVision()
                 end
+
+                DisableControlAction(0, 75, true) -- disable exit vehicle
+                DisableControlAction(27, 75, true) -- disable exit vehicle
 
                 local vehicle = nil
 
@@ -178,7 +181,6 @@ Citizen.CreateThread(function()
                 local roadHashNearHeli
 
                 if vehicle == nil then
-
                     SendNUIMessage({
                         type = "update",
                         info = {
@@ -186,6 +188,7 @@ Citizen.CreateThread(function()
                             numPlate = "",
                             vehRoadName = "",
                             acftRoadName = streetname,
+                            acftHeading = GetEntityHeading(heli),
                             heading = GetCamRot(cam, 2).z,
                             vehHeading = -1,
                             altitude = GetEntityHeight(lPed, playerCoords.x,
@@ -194,7 +197,9 @@ Citizen.CreateThread(function()
                                                        true),
                             altitudeAGL = GetEntityHeightAboveGround(lPed),
                             locked = not not locked_on_vehicle,
-                            camtype = vision_state
+                            camtype = vision_state,
+                            speed = "",
+                            spotlight = spotlight_state
                         }
                     })
                 else
@@ -205,6 +210,19 @@ Citizen.CreateThread(function()
                                                  vehicleCoords.y,
                                                  vehicleCoords.z))
 
+                    local vehspd = ""
+
+                    if useMilesPerHour then
+                        vehspd = string.format(
+                                     "%." .. (numDecimalPlaces or 0) .. "f",
+                                     GetEntitySpeed(vehicle) * 2.236936) ..
+                                     " mph"
+                    else
+                        vehspd = string.format(
+                                     "%." .. (numDecimalPlaces or 0) .. "f",
+                                     GetEntitySpeed(vehicle) * 3.6) .. " kmh"
+                    end
+
                     SendNUIMessage({
                         type = "update",
                         info = {
@@ -212,6 +230,7 @@ Citizen.CreateThread(function()
                             numPlate = GetVehicleNumberPlateText(vehicle),
                             vehRoadName = vehstreetname,
                             acftRoadName = streetname,
+                            acftHeading = GetEntityHeading(heli),
                             heading = RotAnglesToVec(GetCamRot(cam, 2)).z,
                             vehHeading = GetEntityHeading(vehicle),
                             altitude = GetEntityHeight(heli, playerCoords.x,
@@ -220,7 +239,9 @@ Citizen.CreateThread(function()
                                                        false),
                             altitudeAGL = GetEntityHeightAboveGround(lPed),
                             locked = not not locked_on_vehicle,
-                            camtype = vision_state
+                            camtype = vision_state,
+                            speed = vehspd,
+                            spotlight = spotlight_state
                         }
                     })
                 end
@@ -236,6 +257,8 @@ Citizen.CreateThread(function()
             SetNightvision(false)
             SetSeethrough(false)
             SendNUIMessage({type = "hide"})
+            vision_state = 0
+            spotlight_state = false
         end
     end
 end)
@@ -312,10 +335,10 @@ function GetVehicleInView(cam)
     local coords = GetCamCoord(cam)
     local forward_vector = RotAnglesToVec(GetCamRot(cam, 2))
     -- DrawLine(coords, coords+(forward_vector*100.0), 255,0,0,255) -- debug line to show LOS of cam
-    local rayhandle = CastRayPointToPoint(coords,
-                                          coords + (forward_vector * 200.0), 10,
-                                          GetVehiclePedIsIn(GetPlayerPed(-1)), 0)
-    local _, _, _, _, entityHit = GetRaycastResult(rayhandle)
+    local rayhandle = StartShapeTestRay(coords,
+                                        coords + (forward_vector * 350.0), 10,
+                                        GetVehiclePedIsIn(GetPlayerPed(-1)), 0)
+    local _, _, _, _, entityHit = GetShapeTestResult(rayhandle)
     if entityHit > 0 and IsEntityAVehicle(entityHit) then
         return entityHit
     else
@@ -346,7 +369,7 @@ function HandleSpotlight(cam)
         local forward_vector = RotAnglesToVec(rotation)
         local camcoords = GetCamCoord(cam)
         DrawSpotLight(camcoords, forward_vector, 255, 255, 255, 300.0, 0.5, 0.5,
-                      5.0, 75.0)
+                      7.50, 75.0)
         TriggerServerEvent("heli:spotlight_update", currentPlayerId, {
             comcoords = camcoords,
             forward_vector = forward_vector
@@ -363,7 +386,7 @@ Citizen.CreateThread(function()
                 if value.enabled and key ~= currentPlayerId and value.camcoords ~=
                     nil and value.forward_vector ~= nil then
                     DrawSpotLight(value.camcoords, value.forward_vector, 255,
-                                  255, 255, 300.0, 0.5, 0.5, 5.0, 75.0)
+                                  255, 255, 300.0, 0.5, 0.5, 7.50, 75.0)
                 end
             end
         end

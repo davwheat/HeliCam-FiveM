@@ -26,10 +26,10 @@
         <div class="right">
           <span id="camtype" class="invert"></span>
           <span id="zoom"></span>
-          <span id="auto2"></span>
+          <span id="state"></span>
+          <span id="spotlight"></span>
           <span id="num1">80</span>
           <span id="default">DFLT</span>
-          <span id="num2"></span>
         </div>
       </header>
       <aside></aside>
@@ -39,16 +39,17 @@
       <footer>
         <div class="left">
           <span id="acft">ACFT</span>
-          <span id="acftPosition">a</span>
-          <span id="acftDirection">b</span>
-          <span id="acftHeight">c</span>
+          <span id="acftPosition"></span>
+          <span id="acftDirection"></span>
+          <span id="acftHeight"></span>
         </div>
         <div class="mid"></div>
         <div class="right">
           <span id="tgt">TGT</span>
-          <span id="tgtPlate">a</span>
-          <span id="tgtPosition">b</span>
-          <span id="tgtDirection">c</span>
+          <span id="tgtPlate"></span>
+          <span id="tgtPosition"></span>
+          <span id="tgtDirection"></span>
+          <span id="tgtSpeed"></span>
         </div>
       </footer>
     </div>
@@ -128,51 +129,59 @@
       function HeadingToCompassDirection(hdg) {
         let direction = Math.floor((hdg + 22.5) / 45);
 
-        switch (direction) {
-          case 0:
-          case 8:
-          default:
-            return "N";
-          case 1:
-            return "NE";
-          case 2:
-            return "E";
-          case 3:
-            return "SE";
-          case 4:
-            return "S";
-          case 5:
-            return "SW";
-          case 6:
-            return "W";
-          case 7:
-            return "NW";
-        }
+        const hdgToDir = (direction) => {
+          switch (direction) {
+            case 0:
+            case 8:
+            default:
+              return "N";
+            case 1:
+              return "NW";
+            case 2:
+              return "W";
+            case 3:
+              return "SW";
+            case 4:
+              return "S";
+            case 5:
+              return "SE";
+            case 6:
+              return "E";
+            case 7:
+              return "NE";
+          }
+        };
+
+        return hdgToDir(direction) + ` (${Math.round(hdg)}°)`;
       }
 
       function ACHeadingToCompassDirection(hdg) {
         let direction = Math.floor((hdg + 22.5) / 45);
 
-        switch (direction) {
-          case 0:
-          default:
-            return "N";
-          case -1:
-            return "NE";
-          case -2:
-            return "E";
-          case -3:
-            return "SE";
-          case 4:
-          case -4:
-            return "S";
-          case 3:
-            return "SW";
-          case 2:
-            return "W";
-          case 1:
-            return "NW";
-        }
+        const hdgToDir = (direction) => {
+          switch (direction) {
+            case 0:
+            default:
+              return "N";
+            case -1:
+              return "NE";
+            case -2:
+              return "E";
+            case -3:
+              return "SE";
+            case 4:
+            case -4:
+              return "S";
+            case 3:
+              return "SW";
+            case 2:
+              return "W";
+            case 1:
+              return "NW";
+          }
+        };
+
+        return hdgToDir(direction) + ` (${Math.round(hdg)}°)`;
       }
 
       window.addEventListener("message", (event) => {
@@ -182,11 +191,14 @@
           //   numPlate: String,
           //   vehRoadName: String,
           //   acftRoadName: String,
-          //   heading: Number,
+          //   acftHeading: Number, -- heli direction
+          //   heading: Number, -- camera direction
           //   vehHeading: Number,
           //   altitudeAGL: Number,
           //   locked: Boolean,
           //   camtype: String, -- 0 is normal, 1 is night vision, 2 is thermal vision
+          //   speed: String, -- auto formatted with mph or kmh
+          //   spotlight: Boolean, -- has camera operator got spotlight on
           // }
 
           document.getElementById("zoom").innerText = Math.round(
@@ -203,7 +215,9 @@
             event.data.info.acftRoadName;
           document.getElementById(
             "acftDirection"
-          ).innerText = ACHeadingToCompassDirection(event.data.info.heading);
+          ).innerText = HeadingToCompassDirection(event.data.info.acftHeading);
+
+          //ACHeadingToCompassDirection(event.data.info.heading);
           document.getElementById("acftHeight").innerText = `${Math.round(
             event.data.info.altitudeAGL * 3.5
           )} FT`;
@@ -211,11 +225,25 @@
           document.getElementById("tgtPlate").innerText =
             event.data.info.numPlate;
           document.getElementById("tgtPosition").innerText =
-            event.data.info.vehRoadName;
+            event.data.info.vehHeading === -1
+              ? "NO VEHICLE"
+              : event.data.info.vehRoadName;
           document.getElementById("tgtDirection").innerText =
             event.data.info.vehHeading === -1
               ? ""
               : HeadingToCompassDirection(event.data.info.vehHeading);
+          document.getElementById("tgtSpeed").innerText = event.data.info.speed;
+
+          document.getElementById("state").innerText = event.data.info.locked
+            ? "LOCK"
+            : event.data.info.vehHeading === -1
+            ? "AUTO"
+            : "SCAN";
+
+          document.getElementById("spotlight").innerText = event.data.info
+            .spotlight
+            ? "SPTLT"
+            : "";
         } else if (event.data.type === "show") {
           document.body.classList.remove("hide");
         } else if (event.data.type === "hide") {

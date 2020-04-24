@@ -154,7 +154,7 @@ header {
     overflow: hidden;
     margin-left: 64px;
 
-    grid-template-columns: auto max-content max-content max-content max-content;
+    grid-template-columns: auto max-content max-content 5ch max-content;
     grid-template-rows: max-content max-content;
     grid-template-areas:
       "camtype  zoom  .     aut   num1"
@@ -169,8 +169,9 @@ header {
       grid-area: zoom;
     }
 
-    #auto2 {
+    #state {
       grid-area: aut;
+      text-align: center;
     }
 
     #num1 {
@@ -181,8 +182,9 @@ header {
       grid-area: dflt;
     }
 
-    #num2 {
+    #spotlight {
       grid-area: num2;
+      text-align: center;
     }
   }
 }
@@ -249,7 +251,7 @@ footer {
     grid-template-rows: max-content max-content;
     grid-template-areas:
       ".  tgt"
-      ".  vehpos"
+      "vehspd  vehpos"
       "plate   vehdir";
 
     #tgt {
@@ -269,6 +271,11 @@ footer {
 
     #tgtDirection {
       grid-area: vehdir;
+      text-align: right;
+    }
+
+    #tgtSpeed {
+      grid-area: vehspd;
       text-align: right;
     }
   }
