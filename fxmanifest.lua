@@ -1,6 +1,9 @@
-resource_manifest_version '05cfa83c-a124-4cfa-a768-c24a5811d8f9'
+fx_version 'bodacious'
+games {'gta5'}
 
+author 'David Wheatley'
 description 'FiveM Helicopter Camera by davwheat and mraes'
+version '3.0.0'
 
 client_script 'heli_client.lua'
 server_script 'heli_server.lua'
