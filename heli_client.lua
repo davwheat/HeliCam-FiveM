@@ -300,7 +300,7 @@ CreateThread(
             lib.onCache(
                 "vehicle",
                 function(value)
-                    if value and GetVehicleClass(value) == 15 then
+                    if value and (Config.AllowInAnyHeli and GetVehicleClass(value) == 15 or Config.Vehicles[GetEntityModel(cache.vehicle)]) then
                         DebugPrint("Heli Thread Started")
                         if RunHeliThread then
                             return
@@ -400,10 +400,6 @@ function GetVehicleInView(cam)
         return nil
     end
 end
-
-RegisterNetEvent("heli:spotlight_on")
-RegisterNetEvent("heli:spotlight_off")
-RegisterNetEvent("heli:spotlight_update")
 
 local currentPlayerId = cache.serverId
 
